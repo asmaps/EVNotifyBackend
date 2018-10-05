@@ -30,7 +30,7 @@ const express = require('express'),
         applicationId: srv_config.MOESIF_TOKEN,
         identifyUser: req => req.body.akey,
         getApiVersion: () => '2',
-        skip: req => (req.path === '/location' || req.path === '/debug') && req.method === 'POST'
+        skip: req => req.path === '/location' || req.path === '/debug' || req.path === '/soc' || req.path === '/extended'
     }) : false),
     db = require('./modules/db'),
     account = require('./modules/account'),
@@ -40,7 +40,10 @@ const express = require('express'),
     settings = require('./modules/settings'),
     notifications = require('./modules/notification'),
     telegram = require('./modules/notification/telegram'),
-    push = require('./modules/notification/push');
+    push = require('./modules/notification/push'),
+    stations = require('./modules/stations'),
+    logs = require('./modules/logs'),
+    webAccount = require('./modules/web/account');
 
 // ensure that session secret is valid
 if (!srv_config.SESSION_SECRET || typeof srv_config.SESSION_SECRET !== 'string') throw new Error('No session secret given within config');
@@ -118,6 +121,15 @@ app.get('/location', sync.getLocation);
 app.put('/renewtoken', token.renewToken);
 app.get('/report', report.downloadReport);
 app.post('/notification', notifications.send);
+app.get('/stations', stations.getStations);
+app.get('/station', stations.getStation);
+app.get('/stationphoto', stations.getStationPhoto);
+app.get('/stationcards', stations.getStationCards);
+app.get('/logs', logs.getLogs);
+app.get('/logdetail', logs.getLog);
+app.post('/logdetail', logs.createLog);
+app.put('/logdetail', logs.updateLog);
+app.delete('/logdetail', logs.deleteLog);
 app.post('/debug', (req, res) => {
     if (typeof req.body.data === 'string') {
         db.query('INSERT INTO debug (data, timestamp) VALUES (?, ?)', [
@@ -138,6 +150,9 @@ app.post('/debug', (req, res) => {
         });
     }
 });
+// the web routes
+app.post('/web/register', webAccount.register);
+app.post('/web/login', webAccount.login);
 
 // requested route does not exist
 app.use((req, res) => res.status(404).json({
